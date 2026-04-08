@@ -98,6 +98,14 @@ export const appRouter = router({
         const { id, ...data } = input;
         return db.updateProduct(id, data);
       }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user?.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        return db.deleteProduct(input.id);
+      }),
   }),
 
   // ============ DISCOUNTS ============

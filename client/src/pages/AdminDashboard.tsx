@@ -37,6 +37,7 @@ export default function AdminDashboard() {
   }
 
   const [activeTab, setActiveTab] = useState("products");
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [newProduct, setNewProduct] = useState({
     name: "",
     description: "",
@@ -51,6 +52,8 @@ export default function AdminDashboard() {
   const { data: invoices } = trpc.invoices.list.useQuery();
 
   const createProductMutation = trpc.products.create.useMutation();
+  const updateProductMutation = trpc.products.update.useMutation();
+  const deleteProductMutation = trpc.products.delete.useMutation();
   const updateOrderStatusMutation = trpc.orders.updateStatus.useMutation();
 
   const handleCreateProduct = async () => {
@@ -80,6 +83,42 @@ export default function AdminDashboard() {
       refetchProducts();
     } catch (error: any) {
       toast.error(error.message || "Gagal menambah produk");
+    }
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editingProduct.name || !editingProduct.price || !editingProduct.quantity) {
+      toast.error("Lengkapi data produk");
+      return;
+    }
+
+    try {
+      await updateProductMutation.mutateAsync({
+        id: editingProduct.id,
+        name: editingProduct.name,
+        description: editingProduct.description,
+        price: editingProduct.price,
+        unitId: parseInt(editingProduct.unitId),
+        quantity: editingProduct.quantity,
+      });
+
+      setEditingProduct(null);
+      toast.success("Produk berhasil diperbarui");
+      refetchProducts();
+    } catch (error: any) {
+      toast.error(error.message || "Gagal memperbarui produk");
+    }
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus produk ini?")) return;
+
+    try {
+      await deleteProductMutation.mutateAsync({ id });
+      toast.success("Produk berhasil dihapus");
+      refetchProducts();
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menghapus produk");
     }
   };
 
@@ -173,37 +212,45 @@ export default function AdminDashboard() {
           <TabsContent value="products" className="space-y-6">
             <Card className="card-premium">
               <CardHeader>
-                <CardTitle>Tambah Produk Baru</CardTitle>
+                <CardTitle>{editingProduct ? "Edit Produk" : "Tambah Produk Baru"}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Input
                     placeholder="Nama Produk"
-                    value={newProduct.name}
+                    value={editingProduct ? editingProduct.name : newProduct.name}
                     onChange={(e) =>
-                      setNewProduct({ ...newProduct, name: e.target.value })
+                      editingProduct 
+                        ? setEditingProduct({ ...editingProduct, name: e.target.value })
+                        : setNewProduct({ ...newProduct, name: e.target.value })
                     }
                   />
                   <Input
                     placeholder="Harga"
                     type="number"
-                    value={newProduct.price}
+                    value={editingProduct ? editingProduct.price : newProduct.price}
                     onChange={(e) =>
-                      setNewProduct({ ...newProduct, price: e.target.value })
+                      editingProduct
+                        ? setEditingProduct({ ...editingProduct, price: e.target.value })
+                        : setNewProduct({ ...newProduct, price: e.target.value })
                     }
                   />
                   <Input
                     placeholder="Kuantitas"
                     type="number"
-                    value={newProduct.quantity}
+                    value={editingProduct ? editingProduct.quantity : newProduct.quantity}
                     onChange={(e) =>
-                      setNewProduct({ ...newProduct, quantity: e.target.value })
+                      editingProduct
+                        ? setEditingProduct({ ...editingProduct, quantity: e.target.value })
+                        : setNewProduct({ ...newProduct, quantity: e.target.value })
                     }
                   />
                   <select
-                    value={newProduct.unitId}
+                    value={editingProduct ? editingProduct.unitId : newProduct.unitId}
                     onChange={(e) =>
-                      setNewProduct({ ...newProduct, unitId: e.target.value })
+                      editingProduct
+                        ? setEditingProduct({ ...editingProduct, unitId: e.target.value })
+                        : setNewProduct({ ...newProduct, unitId: e.target.value })
                     }
                     className="input-elegant"
                   >
@@ -216,15 +263,31 @@ export default function AdminDashboard() {
                 </div>
                 <Textarea
                   placeholder="Deskripsi Produk (Opsional)"
-                  value={newProduct.description}
+                  value={editingProduct ? editingProduct.description : newProduct.description}
                   onChange={(e) =>
-                    setNewProduct({ ...newProduct, description: e.target.value })
+                    editingProduct
+                      ? setEditingProduct({ ...editingProduct, description: e.target.value })
+                      : setNewProduct({ ...newProduct, description: e.target.value })
                   }
                 />
-                <Button onClick={handleCreateProduct} className="btn-primary gap-2">
-                  <Plus className="w-4 h-4" />
-                  Tambah Produk
-                </Button>
+                <div className="flex gap-2">
+                  {editingProduct ? (
+                    <>
+                      <Button onClick={handleUpdateProduct} className="btn-primary gap-2">
+                        <Edit2 className="w-4 h-4" />
+                        Simpan Perubahan
+                      </Button>
+                      <Button onClick={() => setEditingProduct(null)} className="btn-secondary">
+                        Batal
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={handleCreateProduct} className="btn-primary gap-2">
+                      <Plus className="w-4 h-4" />
+                      Tambah Produk
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -254,10 +317,19 @@ export default function AdminDashboard() {
                         Rp {parseFloat(product.price).toLocaleString("id-ID")}
                       </p>
                       <div className="flex gap-2">
-                        <button className="p-2 hover:bg-secondary rounded-lg transition-colors">
+                        <button 
+                          onClick={() => setEditingProduct({
+                            ...product,
+                            unitId: product.unitId.toString()
+                          })}
+                          className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                        >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleDeleteProduct(product.id)}
+                          className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                        >
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </button>
                       </div>

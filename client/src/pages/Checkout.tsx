@@ -21,7 +21,18 @@ interface CartItem {
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    const savedCart = localStorage.getItem("cart");
+    if (savedCart) {
+      try {
+        return JSON.parse(savedCart);
+      } catch (e) {
+        console.error("Failed to load cart:", e);
+        return [];
+      }
+    }
+    return [];
+  });
   const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -32,18 +43,6 @@ export default function Checkout() {
 
   const { data: paymentMethods } = trpc.paymentMethods.list.useQuery();
   const createOrderMutation = trpc.orders.create.useMutation();
-
-  // Load cart from localStorage
-  useState(() => {
-    const savedCart = localStorage.getItem("cart");
-    if (savedCart) {
-      try {
-        setCartItems(JSON.parse(savedCart));
-      } catch (e) {
-        console.error("Failed to load cart:", e);
-      }
-    }
-  });
 
   const cartTotal = cartItems.reduce(
     (sum, item) => sum + parseFloat(item.price) * item.quantity,

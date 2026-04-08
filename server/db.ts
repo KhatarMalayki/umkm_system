@@ -164,6 +164,13 @@ export async function updateProduct(id: number, data: Partial<{
   return db.update(products).set(data).where(eq(products.id, id));
 }
 
+export async function deleteProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.delete(products).where(eq(products.id, id));
+}
+
 // ============ DISCOUNTS ============
 export async function getActiveDiscounts() {
   const db = await getDb();

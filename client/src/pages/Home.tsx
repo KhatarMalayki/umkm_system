@@ -6,15 +6,31 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Search, LogOut, LogIn } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { Link } from "wouter";
 
 export default function Home() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [search, setSearch] = useState("");
-  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [cartItems, setCartItems] = useState<any[]>(() => {
+    const savedCart = localStorage.getItem("cart");
+    if (savedCart) {
+      try {
+        return JSON.parse(savedCart);
+      } catch (e) {
+        console.error("Failed to load cart:", e);
+        return [];
+      }
+    }
+    return [];
+  });
   const [showCart, setShowCart] = useState(false);
+
+  // Persist cart to localStorage
+  useEffect(() => {
+    localStorage.setItem("cart", JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const { data: products, isLoading: productsLoading } = trpc.products.list.useQuery(
     { search: search || undefined }
